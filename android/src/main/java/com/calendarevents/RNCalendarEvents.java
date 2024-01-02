@@ -1563,14 +1563,14 @@ public class RNCalendarEvents extends ReactContextBaseJavaModule implements Perm
                     @Override
                     public void run() {
                         try {
-                            int eventId = -1;
+                            long eventId = -1;
                             for(int i = 0; i < events.size(); ++i) {
                                 final String title = events.getMap(i).getString("title");
                                 final ReadableMap details = events.getMap(i).getMap("details");
                                 eventId = addEvent(title, details, options);
                             }
                             if (eventId > -1) {
-                                promise.resolve(Integer.toString(eventId));
+                                promise.resolve(Long.toString(eventId));
                             } else {
                                 promise.reject("add event error", "Unable to save event");
                             }
