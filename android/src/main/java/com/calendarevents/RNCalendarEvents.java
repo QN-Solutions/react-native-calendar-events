@@ -1474,5 +1474,119 @@ public class RNCalendarEvents extends ReactContextBaseJavaModule implements Perm
     public void uriForCalendar(Promise promise) {
         promise.resolve(CalendarContract.Events.CONTENT_URI.toString());
     }
+
+    @ReactMethod
+    public void removeEvents(final String calendarId, final Dynamic startDate, final Dynamic endDate, final Promise promise) {
+        // get all events of a calendar for the time range
+        String dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
+        SimpleDateFormat sdf = new SimpleDateFormat(dateFormat);
+        sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
+
+        Calendar eStartDate = Calendar.getInstance();
+        Calendar eEndDate = Calendar.getInstance();
+
+        try {
+            if (startDate.getType() == ReadableType.String) {
+                eStartDate.setTime(sdf.parse(startDate.asString()));
+            } else if (startDate.getType() == ReadableType.Number) {
+                eStartDate.setTimeInMillis((long)startDate.asDouble());
+            }
+
+            if (endDate.getType() == ReadableType.String) {
+                eEndDate.setTime(sdf.parse(endDate.asString()));
+            } else if (endDate.getType() == ReadableType.Number) {
+                eEndDate.setTimeInMillis((long)endDate.asDouble());
+            }
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+
+        Cursor cursor;
+        ContentResolver cr = reactContext.getContentResolver();
+
+        Uri.Builder uriBuilder = CalendarContract.Instances.CONTENT_URI.buildUpon();
+        ContentUris.appendId(uriBuilder, eStartDate.getTimeInMillis());
+        ContentUris.appendId(uriBuilder, eEndDate.getTimeInMillis());
+
+        Uri uri = uriBuilder.build();
+
+        String selection = "((" + CalendarContract.Instances.BEGIN + " >= " + eStartDate.getTimeInMillis() + ") " +
+                "AND (" + CalendarContract.Instances.END + " <= " + eEndDate.getTimeInMillis() + ") " +
+                "AND (" + CalendarContract.Instances.VISIBLE + " = 1) " +
+                "AND (" + CalendarContract.Instances.STATUS + " IS NOT " + CalendarContract.Events.STATUS_CANCELED + ") " +
+                "AND (" + CalendarContract.Instances.CALENDAR_ID + " = " + calendarId + ") ";
+
+        selection += ")";
+
+        cursor = cr.query(uri, new String[]{
+                CalendarContract.Instances.EVENT_ID,
+                CalendarContract.Instances.TITLE,
+                CalendarContract.Instances.DESCRIPTION,
+                CalendarContract.Instances.BEGIN,
+                CalendarContract.Instances.END,
+                CalendarContract.Instances.ALL_DAY,
+                CalendarContract.Instances.EVENT_LOCATION,
+                CalendarContract.Instances.RRULE,
+                CalendarContract.Instances.CALENDAR_ID,
+                CalendarContract.Instances.AVAILABILITY,
+                CalendarContract.Instances.HAS_ALARM,
+                CalendarContract.Instances.ORIGINAL_ID,
+                CalendarContract.Instances.EVENT_ID,
+                CalendarContract.Instances.DURATION,
+                CalendarContract.Instances.ORIGINAL_SYNC_ID,
+        }, selection, null, null);
+
+        // stick the whole stuff into an array
+        ArrayList<String> eventIds = new ArrayList<String>();
+        while( cursor.moveToNext() ) {
+            eventIds.add( cursor.getString(0) );
+        };
+
+        int rows = 0;
+        for( String eventId :eventIds ) {
+            Uri deleteUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, (long) Integer.parseInt(eventId));
+            rows += cr.delete(deleteUri, null, null);
+        }
+
+        if( rows != eventIds.size() ) {
+            promise.reject("Removing events with ids failed!");
+        } else {
+            promise.resolve(true);
+        }
+    }
+
+    @ReactMethod
+    public void saveEvents(final ReadableArray events, final ReadableMap options, final Promise promise) {
+        if (this.haveCalendarPermissions(false)) {
+            try {
+                Thread thread = new Thread(new Runnable(){
+                    @Override
+                    public void run() {
+                        try {
+                            int eventId = -1;
+                            for(int i = 0; i < events.size(); ++i) {
+                                final String title = events.getMap(i).getString("title");
+                                final ReadableMap details = events.getMap(i).getMap("details");
+                                eventId = addEvent(title, details, options);
+                            }
+                            if (eventId > -1) {
+                                promise.resolve(Integer.toString(eventId));
+                            } else {
+                                promise.reject("add event error", "Unable to save event");
+                            }
+                        } catch (ParseException e) {
+                            promise.reject("add event error", e.getMessage());
+                        }
+                    }
+                });
+                thread.start();
+            } catch (Exception e) {
+                promise.reject("add event error", e.getMessage());
+            }
+        } else {
+            promise.reject("add event error", "you don't have permissions to add an event to the users calendar");
+        }
+    }
+
     //endregion
 }

@@ -46,4 +46,12 @@ export default {
   removeFutureEvents(id, options = { futureEvents: true }) {
     return RNCalendarEvents.removeEvent(id, options);
   },
+
+  removeEvents(calendarId, startDate, endDate) {
+    return RNCalendarEvents.removeEvents(calendarId, startDate, endDate);
+  },
+
+  saveEvents(events, options = {}) {
+    return RNCalendarEvents.saveEvents(events, options);
+  },
 };

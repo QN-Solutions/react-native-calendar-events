@@ -48,4 +48,12 @@ export default {
   openEventInCalendar(eventID) {
     RNCalendarEvents.openEventInCalendar(eventID);
   },
+
+  async removeEvents(calendarId, startDate, endDate) {
+    return RNCalendarEvents.removeEvents(calendarId, startDate, endDate);
+  },
+
+  async saveEvents(events = [], options = { sync: false }) {
+    return RNCalendarEvents.saveEvents(events, options);
+  },
 };

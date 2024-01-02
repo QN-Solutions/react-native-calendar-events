@@ -229,4 +229,12 @@ export default class ReactNativeCalendarEvents {
    * @returns - Promise resolving to boolean to indicate if removal succeeded.
    */
   static removeEvent(id: string, options?: Options): Promise<boolean>;
+  /**
+   * Removes all calendar events in a calendar in the specified date range.
+   * @param calendarId - Id of the calendar
+   * @param startDate - Start of the date range
+   * @param endDate - End of the date range
+   * @returns - Promise resolving to boolean to indicate if removal succeeded.
+   */
+  removeEvents(calendarId, startDate, endDate): Promise<boolean>;
 }

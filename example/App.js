@@ -16,7 +16,7 @@ import {
   Platform,
 } from 'react-native';
 import {Header, Colors} from 'react-native/Libraries/NewAppScreen';
-import RNCalendarEvents from 'react-native-calendar-events';
+import RNCalendarEvents from 'qn_react-native-calendar-events';
 
 const App: () => React$Node = () => {
   return (

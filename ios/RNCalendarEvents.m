@@ -1106,4 +1106,75 @@ RCT_EXPORT_METHOD(removeEvent:(NSString *)eventId options:(NSDictionary *)option
 });
 }
 
+RCT_EXPORT_METHOD(removeEvents:(NSString*)calendarId startDate:(NSDate *)startDate endDate:(NSDate *)endDate resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    // find the calendar to clear
+    EKCalendar *calendar = [self.eventStore calendarWithIdentifier:calendarId];
+    
+    if( calendar ) {
+        NSError *error = nil;
+        
+        NSPredicate *searchPredicate = [self.eventStore predicateForEventsWithStartDate:startDate endDate:endDate calendars:[NSArray arrayWithObject:calendar]];
+        NSArray *events = [self.eventStore eventsMatchingPredicate:searchPredicate];
+        
+        for( EKEvent* event in events ) {
+            [self.eventStore removeEvent:event span:EKSpanThisEvent commit:false error:&error];
+            
+            if( error ) {
+                reject(@"error", @"Error removing events", nil);
+                return;
+            }
+        }
+        
+        // commit the changes
+        [self.eventStore commit:&error];
+        
+        if( error ) {
+            reject(@"error", @"Error committing events removal", nil);
+            return;
+        } else {
+            return resolve(@"1");
+        }
+    }
+    else {
+        reject(@"error", @"Calendar with id does not exist", nil);
+        return;
+    }
+}
+
+RCT_EXPORT_METHOD(saveEvents:(NSArray *)events
+                  options:(NSDictionary *)options
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+    if (![self isCalendarAccessGranted]) {
+        reject(@"error", @"unauthorized to access calendar", nil);
+        return;
+    }
+    
+    __weak RNCalendarEvents *weakSelf = self;
+    dispatch_async(serialQueue, ^{
+        NSDictionary *response;
+        @try {
+            RNCalendarEvents *strongSelf = weakSelf;
+
+            for(id event in events) {
+                NSMutableDictionary *details = [NSMutableDictionary dictionaryWithDictionary:event[@"details"]];
+                [details setValue:event[@"title"] forKey:@"title"];
+                
+                response = [strongSelf buildAndSaveEvent:details options:options];
+            }
+        }
+        @catch (NSException *exception) {
+            reject(@"error", @"saveEvent error", [self exceptionToError:exception]);
+        }
+        
+        if ([response valueForKey:@"success"] != [NSNull null]) {
+            resolve([response valueForKey:@"success"]);
+        } else {
+            reject(@"error", [response valueForKey:@"error"], nil);
+        }
+    });
+}
+
 @end
